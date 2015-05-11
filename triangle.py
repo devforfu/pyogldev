@@ -1,5 +1,4 @@
 import sys
-import math
 import ctypes
 import numpy as np
 from glfw import *
@@ -16,80 +15,6 @@ camera_target = [0.0, -0.5, 1.0]  # "look at" direction
 camera_up = [0.0, 1.0, 0.0]  # camera vertical axis
 WINDOW_WIDTH, WINDOW_HEIGHT = 1920, 1200
 CAMERA = Camera(camera_pos, camera_target, camera_up, WINDOW_WIDTH, WINDOW_HEIGHT)
-
-
-def glfw_version():
-    glfwSetErrorCallback(lambda err, msg: print("GLFW error %i: %s" % (err, msg)))
-
-    if not glfwInit():
-        sys.exit(1)
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2)
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, gl.GL_TRUE)
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
-    glfwWindowHint(GLFW_SAMPLES, 16)
-
-    mon = glfwGetPrimaryMonitor()
-    window = glfwCreateWindow()
-
-    if not window:
-        print("[-] Fatal error occurred")
-        glfwTerminate()
-        sys.exit(1)
-
-    glfwMakeContextCurrent(window)
-    renderer = gl.glGetString(gl.GL_RENDERER)
-    gl_version = gl.glGetString(gl.GL_VERSION)
-
-    print("Renderer: ", renderer)
-    print("OpenGL version supported: ", gl_version)
-
-    gl.glEnable(gl.GL_DEPTH_TEST)
-    gl.glDepthFunc(gl.GL_LESS)
-
-    points = np.array([
-        # 0.5, 0.5, 0.0,
-        0.0, 0.5, 0.0,
-        0.5, -0.5, 0.0,
-        -0.5, -0.5, 0.0,
-    ], dtype=np.float32)
-
-    vertex = gl.glCreateShader(gl.GL_VERTEX_SHADER)
-    gl.glShaderSource(vertex, vertex_code)
-    gl.glCompileShader(vertex)
-
-    fragment = gl.glCreateShader(gl.GL_FRAGMENT_SHADER)
-    gl.glShaderSource(fragment, fragment_code)
-    gl.glCompileShader(fragment)
-
-    program = gl.glCreateProgram()
-    gl.glAttachShader(program, vertex)
-    gl.glAttachShader(program, fragment)
-    gl.glLinkProgram(program)
-
-    vao = gl.glGenVertexArrays(1)
-    gl.glBindVertexArray(vao)
-
-    vbo = gl.glGenBuffers(1)
-    gl.glBindBuffer(gl.GL_ARRAY_BUFFER, vbo)
-    gl.glBufferData(gl.GL_ARRAY_BUFFER, points.nbytes, points, gl.GL_STATIC_DRAW)
-
-    gl.glEnableVertexAttribArray(0)
-    gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, 0, ctypes.c_void_p(0))
-
-    while not glfwWindowShouldClose(window):
-        gl.glClearColor(0, 0, 0, 1)
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-        gl.glUseProgram(program)
-        gl.glBindVertexArray(vao)
-        gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 3)
-        glfwPollEvents()
-        glfwSwapBuffers(window)
-        if GLFW_PRESS == glfwGetKey(window, GLFW_KEY_ESCAPE):
-            glfwSetWindowShouldClose(window, 1)
-
-    glfwTerminate()
 
 
 def tiny_glut(args):
@@ -125,7 +50,10 @@ def tiny_glut(args):
     def keyboard(key, x, y):
         if key == glut.GLUT_KEY_F1:
             sys.exit(0)
-        CAMERA.keyboard(key)
+        elif key == glut.GLUT_KEY_HOME:
+            CAMERA.setup()
+        else:
+            CAMERA.keyboard(key)
 
     glut.glutInit(args)
     glut.glutInitDisplayMode(glut.GLUT_DOUBLE | glut.GLUT_RGBA | glut.GLUT_3_2_CORE_PROFILE)

@@ -113,21 +113,22 @@ class Camera:
 
     def render(self):
         update = False
+        edge_step = 0.5
 
         if self._on_left_edge:
-            self._h_angle -= 0.1
+            self._h_angle -= edge_step
             update = True
 
         elif self._on_right_edge:
-            self._h_angle += 0.1
+            self._h_angle += edge_step
             update = True
 
         if self._on_upper_edge and self._v_angle > -90.0:
-            self._v_angle -= 0.1
+            self._v_angle -= edge_step
             update = True
 
         elif self._on_lower_edge and self._v_angle < 90.0:
-            self._v_angle += 0.1
+            self._v_angle += edge_step
             update = True
 
         if update:

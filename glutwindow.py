@@ -53,7 +53,7 @@ class GlutWindow:
             glutGameModeString("{}x{}@32".format(self.width, self.height))
             glutEnterGameMode()
         else:
-            glutCreateWindow(self.title)
+            glutCreateWindow(self.title.encode())
             glutInitWindowPosition(*self.screen_pos)
         self.bind_callbacks()
         glEnable(GL_DEPTH_TEST)
@@ -149,7 +149,7 @@ class GlutWindow:
         glutMainLoop()
 
 
-SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1920, 1200
+SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1024, 768
 
 
 if __name__ == "__main__":

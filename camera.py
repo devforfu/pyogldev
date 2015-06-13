@@ -3,12 +3,20 @@ from OpenGL.GLUT import *
 from utils import *
 
 
+__all__ = ['Camera']
+
+
+def glut_warp_pointer(x: int, y: int):
+    glutWarpPointer(x, y)
+
+
 class Camera:
 
     step_size = 1
     margin = 100
 
-    def __init__(self, pos, target, up, window_width, window_height):
+    def __init__(self, pos, target, up, window_width, window_height,
+                 warp_pointer=glut_warp_pointer):
         self._pos = np.array(pos)
         self._target = normalize(np.array(target))
         self._up = normalize(np.array(up))
@@ -22,6 +30,7 @@ class Camera:
         self._on_right_edge = False
         self._mouse_pos_x = window_width // 2
         self._mouse_pos_y = window_height // 2
+        self._warp_pointer = warp_pointer
         self.setup()
 
     def setup(self):
@@ -43,7 +52,8 @@ class Camera:
                 self._h_angle = 90.0 + to_degree(math.asin(-z))
 
         self._v_angle = -to_degree(math.asin(y))
-        glutWarpPointer(int(self._mouse_pos_x), int(self._mouse_pos_y))
+        # glutWarpPointer(int(self._mouse_pos_x), int(self._mouse_pos_y))
+        self._warp_pointer(int(self._mouse_pos_x), int(self._mouse_pos_y))
 
     @property
     def pos(self):

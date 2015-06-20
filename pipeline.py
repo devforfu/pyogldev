@@ -8,6 +8,7 @@ ProjParams = namedtuple("ProjParams", ['width', 'height', 'z_near', 'z_far', 'fo
 
 
 class Matrix4x4:
+    """ Static class providing basic world matrix transformations """
 
     I = np.eye(4)
 
@@ -87,6 +88,18 @@ class Matrix4x4:
 
     @staticmethod
     def camera_rotation(target, up):
+        """ World -> camera transformation:
+
+        | Ux  Uy  Uz  0 |   | Xworld |   | Xcamera |
+        | Vx  Vy  Vz  0 | * | Yworld | = | Ycamera |
+        | Nx  Ny  Nz  0 |   | Zworld |   | Zcamera |
+        |  0   0   0  1 |   |   1    |   |    1    |
+
+        where:
+            U - "right" camera vector (X' axis)
+            V - "up" camera vector (Y' axis)
+            N - "look at" camera vector (Z' axis)
+        """
         n = target / np.linalg.norm(target)
         u = up / np.linalg.norm(up)
         u = np.cross(u, target)
@@ -100,6 +113,10 @@ class Matrix4x4:
 
 
 class Pipeline:
+    """ Rendering pipeline.
+
+    Nothing more then matrix composition dependant on specified camera.
+    """
 
     def __init__(self, **params):
         self.scaling = Matrix4x4.scaling(params.get('scaling', None))
@@ -118,11 +135,16 @@ class Pipeline:
 
     def get_wvp(self):
         P, T, R, S = self.projection, self.translation, self.rotation, self.scaling
-        cx, cy, cz = self._camera.pos
-        camera_trans = Matrix4x4.translation([-cx, -cy, -cz])
-        camera_rot = Matrix4x4.camera_rotation(self._camera.target, self._camera.up)
-        transformation = P.dot(camera_rot).dot(camera_trans).dot(T).dot(R).dot(S)
-        return transformation
+
+        if not self._camera:
+            return P.dot(T).dot(R).dot(S)
+
+        else:
+            cx, cy, cz = self._camera.pos
+            camera_trans = Matrix4x4.translation([-cx, -cy, -cz])
+            camera_rot = Matrix4x4.camera_rotation(self._camera.target, self._camera.up)
+            transformation = P.dot(camera_rot).dot(camera_trans).dot(T).dot(R).dot(S)
+            return transformation
 
 
 

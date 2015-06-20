@@ -4,6 +4,12 @@ from utils import *
 
 
 class Camera:
+    """ Keeps data about camera position and provides methods
+    to control camera with mouse and keyboard.
+
+    Configured camera position and orientation are used then
+    in rendering pipeline.
+    """
 
     step_size = 1
     margin = 100
@@ -58,6 +64,7 @@ class Camera:
         return self._up
 
     def keyboard(self, key):
+        """ Moving camera position in horizontal plane relative to camera's target vector"""
 
         if key == GLUT_KEY_UP:
             self._pos += (self._target * self.step_size)
@@ -82,6 +89,7 @@ class Camera:
         return False
 
     def mouse(self, x, y):
+        """ Camera degree changing on mouse movement """
         delta_x = x - self._mouse_pos_x
         delta_y = y - self._mouse_pos_y
         self._mouse_pos_x = x
@@ -135,6 +143,7 @@ class Camera:
             self.update()
 
     def update(self):
+        """ Applies changes of camera position and rotation """
 
         # rotate the view vector by the horizontal angle around the vertical axis
         v_axis = np.array([0.0, 1.0, 0.0])

@@ -43,6 +43,7 @@ class GlutWindow:
             2, 3, 4,
             3, 0, 4
         ], dtype=np.uint32)
+        self._vertex_attributes = {"Position": -1}
         self._setup()
 
     def _setup(self):
@@ -64,13 +65,20 @@ class GlutWindow:
             self.add_shader(file, shader_type)
         glLinkProgram(self._program)
         glUseProgram(self._program)
-        pipeline = self.get_pipeline()
-        pipeline.set_camera(self._camera)
+        self.get_attributes()
         self.create_vertex_buffer()
         self.create_index_buffer()
         texture = Texture(GL_TEXTURE_2D, "resources/test.png")
         if not texture.load():
             raise ValueError("cannot load texture")
+
+    def get_attributes(self):
+        """ Extracts attributes defined in vertex shader program """
+        for attr_name in self._vertex_attributes.keys():
+            position_attr = glGetAttribLocation(self._program, attr_name)
+            if position_attr == -1:
+                self._log("cannot bind attribute: %s" % attr_name)
+            self._vertex_attributes[attr_name] = position_attr
 
     def bind_callbacks(self):
         glutDisplayFunc(self.on_display)
@@ -79,6 +87,7 @@ class GlutWindow:
         glutSpecialFunc(self.on_keyboard)
 
     def create_vertex_buffer(self):
+        """ Creates vertex array and vertex buffer and fills last one with data """
         self._vao = glGenVertexArrays(1)
         glBindVertexArray(self._vao)
         self._vbo = glGenBuffers(1)
@@ -119,6 +128,7 @@ class GlutWindow:
         return pipeline
 
     def on_display(self):
+        """ Rendering callback """
         self._camera.render()
         glClear(GL_COLOR_BUFFER_BIT)
         scale_location = glGetUniformLocation(self._program, "gScale")
@@ -126,7 +136,9 @@ class GlutWindow:
         if scale_location == 0xffffffff or world_location == 0xffffffff:
             self._log("cannot get uniform parameters")
             sys.exit(1)
-        glEnableVertexAttribArray(0)
+
+        # glEnableVertexAttribArray(0)
+        glEnableVertexAttribArray(self._vertex_attributes["Position"])
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self._ibo)
@@ -149,7 +161,7 @@ class GlutWindow:
         glutMainLoop()
 
 
-SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1920, 1200
+SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 720
 
 
 if __name__ == "__main__":

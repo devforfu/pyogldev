@@ -36,6 +36,7 @@ def rotate(v, angle, axe):
 
 
 class Quaternion:
+    """ Simple quaternion implementation for vector rotation support """
 
     def __init__(self, x, y, z, w):
         self.x = x

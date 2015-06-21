@@ -28,22 +28,35 @@ class GlutWindow:
         self._pipeline_creation = params.get("pipelinecreation", None)
         self._clear_color = params.get("clearcolor", (0, 0, 0, 0))
         self._shaders = params.get("shaders", {})
+        # self._vertices = np.array([
+        #     -1, -1, -1, 0.0, 0.0,
+        #     -1, -1, 1, 1.0, 0.0,
+        #     1, -1, 1, 1.0, 1.0,
+        #     1, -1, -1, 0.0, 1.0,
+        #     0, 1, 0, 0.5, 0.5
+        # ], dtype=np.float32)
+        # self._indexes = np.array([
+        #     0, 1, 2,
+        #     2, 3, 0,
+        #     0, 1, 4,
+        #     1, 2, 4,
+        #     2, 3, 4,
+        #     3, 0, 4
+        # ], dtype=np.uint32)
         self._vertices = np.array([
-            -1, -1, 0,
-            0, -1, -1,
-            1, -1, 0,
-            0, -1, 1,
-            0, 1, 0
+            -1.0, -1.0, 0.5773, 0.0, 0.0,
+            0.0, -1.0, -1.15475, 0.5, 0.0,
+            1.0, -1.0, 0.5773, 1.0, 0.0,
+            0.0, 1.0, 0.0, 0.5, 1.0
         ], dtype=np.float32)
         self._indexes = np.array([
-            0, 1, 2,
-            1, 2, 3,
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 4,
-            3, 0, 4
+            0, 3, 1,
+            1, 3, 2,
+            2, 3, 0,
+            0, 1, 2
         ], dtype=np.uint32)
-        self._vertex_attributes = {"Position": -1}
+        self._vertex_attributes = {"Position": -1, "TexCoord": -1}
+        self._texture = None
         self._setup()
 
     def _setup(self):
@@ -58,8 +71,13 @@ class GlutWindow:
             glutInitWindowPosition(*self.screen_pos)
         self.bind_callbacks()
         glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LESS)
+        glDepthFunc(GL_LEQUAL)
         glClearColor(*self._clear_color)
+        # seems strange because should be GL_BACK... maybe something with camera?
+        glCullFace(GL_FRONT)
+        glFrontFace(GL_CW)
+        glEnable(GL_CULL_FACE)
+
         self._program = glCreateProgram()
         for file, shader_type in self._shaders.items():
             self.add_shader(file, shader_type)
@@ -71,6 +89,7 @@ class GlutWindow:
         texture = Texture(GL_TEXTURE_2D, "resources/test.png")
         if not texture.load():
             raise ValueError("cannot load texture")
+        self._texture = texture
 
     def get_attributes(self):
         """ Extracts attributes defined in vertex shader program """
@@ -130,21 +149,31 @@ class GlutWindow:
     def on_display(self):
         """ Rendering callback """
         self._camera.render()
-        glClear(GL_COLOR_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         scale_location = glGetUniformLocation(self._program, "gScale")
         world_location = glGetUniformLocation(self._program, "gWorld")
+        sampler = glGetUniformLocation(self._program, "gSampler")
         if scale_location == 0xffffffff or world_location == 0xffffffff:
             self._log("cannot get uniform parameters")
             sys.exit(1)
 
-        # glEnableVertexAttribArray(0)
-        glEnableVertexAttribArray(self._vertex_attributes["Position"])
-        glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self._ibo)
         glUniformMatrix4fv(world_location, 1, GL_TRUE, self._pipeline.get_wvp())
+        glUniform1i(sampler, 0)
+
+        # glEnableVertexAttribArray(0)
+        a = self._vertex_attributes
+        glEnableVertexAttribArray(a["Position"])
+        glEnableVertexAttribArray(a["TexCoord"])
+
+        glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
+        glVertexAttribPointer(a["Position"], 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
+        glVertexAttribPointer(a["TexCoord"], 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(12))
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self._ibo)
+
+        self._texture.bind(GL_TEXTURE0)
         glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, ctypes.c_void_p(0))
-        glDisableVertexAttribArray(0)
+        glDisableVertexAttribArray(a["Position"])
+        glDisableVertexAttribArray(a["TexCoord"])
         glutSwapBuffers()
 
     def on_mouse(self, x, y):

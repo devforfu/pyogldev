@@ -4,6 +4,10 @@ from OpenGL.GL import *
 
 
 class Texture:
+    """ Simple wrapper over bytes array representing image.
+
+    Reads texture from file system and prepares it to work with OpenGL.
+    """
 
     def __init__(self, target, filename: str):
         self.target = target
@@ -23,7 +27,7 @@ class Texture:
             print("Error occurred: " + str(e), file=sys.stderr)
             return False
 
-        self.texture_obj = glGenTextures(1)
+        self.texture_obj = glGenTextures(1)  # generate one texture
         h, w, _ = self.blob.shape
         glBindTexture(self.target, self.texture_obj)
         glTexImage2D(self.target, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.blob.flatten())
@@ -33,5 +37,6 @@ class Texture:
         return True
 
     def bind(self, texture_unit):
+        """ Enables specified texture unit and binds current texture """
         glActiveTexture(texture_unit)
         glBindTexture(self.target, self.texture_obj)

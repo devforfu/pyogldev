@@ -157,6 +157,7 @@ class GlutWindow:
             self._log("cannot get uniform parameters")
             sys.exit(1)
 
+        glUniform1f(scale_location, 2.0)
         glUniformMatrix4fv(world_location, 1, GL_TRUE, self._pipeline.get_wvp())
         glUniform1i(sampler, 0)
 

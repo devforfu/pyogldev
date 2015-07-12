@@ -71,4 +71,3 @@ class Quaternion:
 
         raise TypeError("cannot multiply {} by {}"
                         .format(self.__class__.__name__, type(other).__name__))
-

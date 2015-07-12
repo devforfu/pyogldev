@@ -145,8 +145,3 @@ class Pipeline:
             camera_rot = Matrix4x4.camera_rotation(self._camera.target, self._camera.up)
             transformation = P.dot(camera_rot).dot(camera_trans).dot(T).dot(R).dot(S)
             return transformation
-
-
-
-
-

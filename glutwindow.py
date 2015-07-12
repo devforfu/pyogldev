@@ -5,9 +5,10 @@ from OpenGL.GLUT import *
 from pipeline import Pipeline, ProjParams
 from camera import Camera
 from texture import Texture
+from callback import WindowCallback
 
 
-class GlutWindow:
+class GlutWindow(WindowCallback):
 
     def __init__(self, screen_size: tuple, screen_pos: tuple=(0, 0),
                  game_mode: bool=False, title: str='Default Title', **params):
@@ -147,8 +148,11 @@ class GlutWindow:
         return pipeline
 
     def on_display(self):
-        """ Rendering callback """
+        """
+        Rendering callback
+        """
         self._camera.render()
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         scale_location = glGetUniformLocation(self._program, "gScale")
         world_location = glGetUniformLocation(self._program, "gWorld")
@@ -182,8 +186,19 @@ class GlutWindow:
 
     def on_keyboard(self, key, x, y):
         if key == GLUT_KEY_F1:
-            sys.exit(0)
-        self.camera.keyboard(key)
+            if bool(glutLeaveMainLoop):
+                glutLeaveMainLoop()
+            else:
+                sys.exit(0)
+
+        if key == GLUT_KEY_PAGE_UP:
+            pass
+
+        if key == GLUT_KEY_PAGE_DOWN:
+            pass
+
+        if self._camera:
+            self._camera.keyboard(key)
 
     def run(self):
         self._pipeline = self.get_pipeline()

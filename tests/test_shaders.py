@@ -1,8 +1,9 @@
-import sys
 import unittest
+
 from OpenGL.GL import *
 from OpenGL.GLUT import *
-from technique import Technique, ShaderObjectError, InvalidUniformLocationError
+
+from techniques.technique import Technique, ShaderObjectError, InvalidUniformLocationError
 
 
 class TechniqueTest(unittest.TestCase):

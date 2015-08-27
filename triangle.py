@@ -1,7 +1,8 @@
+import os
 import sys
 import ctypes
 import numpy as np
-from glfw import *
+# from glfw import *
 import OpenGL.GL as gl
 import OpenGL.GLUT as glut
 from pipeline import Pipeline, ProjParams

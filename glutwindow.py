@@ -68,7 +68,7 @@ class GlutWindow(WindowCallback):
             glutGameModeString("{}x{}@32".format(self.width, self.height))
             glutEnterGameMode()
         else:
-            glutCreateWindow(self.title)
+            glutCreateWindow(self.title.encode())
             glutInitWindowPosition(*self.screen_pos)
         # callbacks binding
         glutDisplayFunc(self.on_display)
@@ -186,7 +186,7 @@ class GlutWindow(WindowCallback):
         glutMainLoop()
 
 
-SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1200, 720
+SCREEN_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 1024, 768
 
 
 if __name__ == "__main__":

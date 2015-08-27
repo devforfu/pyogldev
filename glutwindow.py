@@ -6,6 +6,7 @@ from pipeline import Pipeline, ProjParams
 from camera import Camera
 from texture import Texture
 from callback import WindowCallback
+from techniques.lighting import LightingTechnique
 
 
 class GlutWindow(WindowCallback):
@@ -17,36 +18,44 @@ class GlutWindow(WindowCallback):
         self.screen_pos = screen_pos
         self.width = width
         self.height = height
+        self.z_near = 1.0
+        self.z_far = 100.0
+        self.fov = 60.0
         self.game_mode = game_mode
         self.title = title
+
         self._vbo = None
         self._vao = None
         self._ibo = None
-        self._camera = None
         self._program = None
         self._texture = None
+        self._vertices = None
+        self._indexes = None
+        self._camera = None
+        self._pipeline = None
+        self._scale = 0.0
+        self._dir_light_color = 1.0, 1.0, 1.0
+        self._dir_light_ambient_intensity = 0.5
+        self._projection = ProjParams(
+            self.width, self.height, self.z_near, self.z_far, self.fov)
 
         self._log = params.get("log", print)
         self._clear_color = params.get("clearcolor", (0, 0, 0, 0))
-        self._shaders = params.get("shaders", {})
-
-        self._vertices = np.array([
-            -1.0, -1.0, 0.5773, 0.0, 0.0,
-            0.0, -1.0, -1.15475, 0.5, 0.0,
-            1.0, -1.0, 0.5773, 1.0, 0.0,
-            0.0, 1.0, 0.0, 0.5, 1.0
-        ], dtype=np.float32)
-        self._indexes = np.array([
-            0, 3, 1,
-            1, 3, 2,
-            2, 3, 0,
-            0, 1, 2
-        ], dtype=np.uint32)
         self._vertex_attributes = {"Position": -1, "TexCoord": -1}
 
         self._init_glut()
         self._init_gl()
-        self._init_pipeline()
+        self._create_vertex_buffer()
+        self._create_index_buffer()
+
+        self._effect = LightingTechnique("shaders/vs.glsl", "shaders/fs_lighting.glsl")
+        self._effect.init()
+        self._effect.enable()
+        self._effect.set_texture_unit(0)
+
+        self._texture = Texture(GL_TEXTURE_2D, "resources/test.png")
+        if not self._texture.load():
+            raise ValueError("cannot load texture")
 
     def _init_glut(self):
         """
@@ -79,24 +88,17 @@ class GlutWindow(WindowCallback):
         glFrontFace(GL_CW)
         glEnable(GL_CULL_FACE)
 
-        self._program = glCreateProgram()
-        for file, shader_type in self._shaders.items():
-            self.add_shader(file, shader_type)
-        glLinkProgram(self._program)
-        glUseProgram(self._program)
-        self.get_attributes()
-
-        self._create_vertex_buffer()
-        self._create_index_buffer()
-        texture = Texture(GL_TEXTURE_2D, "resources/test.png")
-        if not texture.load():
-            raise ValueError("cannot load texture")
-        self._texture = texture
-
     def _create_vertex_buffer(self):
         """
         Creates vertex array and vertex buffer and fills last one with data.
         """
+        self._vertices = np.array([
+            -1.0, -1.0, 0.5773, 0.0, 0.0,
+            0.0, -1.0, -1.15475, 0.5, 0.0,
+            1.0, -1.0, 0.5773, 1.0, 0.0,
+            0.0, 1.0, 0.0, 0.5, 1.0
+        ], dtype=np.float32)
+
         self._vao = glGenVertexArrays(1)
         glBindVertexArray(self._vao)
         self._vbo = glGenBuffers(1)
@@ -107,16 +109,16 @@ class GlutWindow(WindowCallback):
         """
         Creates index buffer.
         """
+        self._indexes = np.array([
+            0, 3, 1,
+            1, 3, 2,
+            2, 3, 0,
+            0, 1, 2
+        ], dtype=np.uint32)
+
         self._ibo = glGenBuffers(1)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self._ibo)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, self._indexes.nbytes, self._indexes, GL_STATIC_DRAW)
-
-    def _init_pipeline(self):
-        """
-        Creates pipeline.
-        """
-        projection = ProjParams(self.width, self.height, 1.0, 100.0, 60.0)
-        self._pipeline = Pipeline(rotation=[0, 30, 0], translation=[0, 0, 6], projection=projection)
 
     @property
     def camera(self):
@@ -126,37 +128,6 @@ class GlutWindow(WindowCallback):
     def camera(self, value):
         self._camera = value
 
-    @property
-    def pipeline(self):
-        return self._pipeline
-
-    @pipeline.setter
-    def pipeline(self, value):
-        self._pipeline = value
-
-    def get_attributes(self):
-        """
-        Extracts attributes defined in vertex shader program.
-        """
-        for attr_name in self._vertex_attributes.keys():
-            position_attr = glGetAttribLocation(self._program, attr_name)
-            if position_attr == -1:
-                self._log("cannot bind attribute: %s" % attr_name)
-            self._vertex_attributes[attr_name] = position_attr
-
-    def add_shader(self, file, shader_type):
-        shader = glCreateShader(shader_type)
-        with open(file) as sf:
-            glShaderSource(shader, sf.read())
-        glCompileShader(shader)
-        if not glGetShaderiv(shader, GL_COMPILE_STATUS):
-            info = glGetShaderInfoLog(shader)
-            self._log("{} shader error occurred".format(os.path.basename(file)))
-            self._log(bytes.decode(info))
-            sys.exit(1)
-        glAttachShader(self._program, shader)
-        # glDeleteShader(shader)
-
     def on_display(self):
         """
         Rendering callback.
@@ -164,31 +135,30 @@ class GlutWindow(WindowCallback):
         self._camera.render()
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        scale_location = glGetUniformLocation(self._program, "gScale")
-        world_location = glGetUniformLocation(self._program, "gWorld")
-        sampler = glGetUniformLocation(self._program, "gSampler")
-        if scale_location == 0xffffffff or world_location == 0xffffffff:
-            self._log("cannot get uniform parameters")
-            sys.exit(1)
 
-        glUniform1f(scale_location, 2.0)
-        glUniformMatrix4fv(world_location, 1, GL_TRUE, self._pipeline.get_wvp())
-        glUniform1i(sampler, 0)
+        self._scale += 0.1
+        pipeline = Pipeline(rotation=[0, self._scale, 0],
+                            translation=[0, 0, 6],
+                            projection=self._projection)
+        pipeline.set_camera(self._camera)
 
-        # glEnableVertexAttribArray(0)
-        a = self._vertex_attributes
-        glEnableVertexAttribArray(a["Position"])
-        glEnableVertexAttribArray(a["TexCoord"])
+        self._effect.set_wvp(pipeline.get_wvp())
+        self._effect.set_directional_light(
+            self._dir_light_color, self._dir_light_ambient_intensity)
+
+        position, tex_coord = 0, 1
+        glEnableVertexAttribArray(position)
+        glEnableVertexAttribArray(tex_coord)
 
         glBindBuffer(GL_ARRAY_BUFFER, self._vbo)
-        glVertexAttribPointer(a["Position"], 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
-        glVertexAttribPointer(a["TexCoord"], 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(12))
+        glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(0))
+        glVertexAttribPointer(tex_coord, 2, GL_FLOAT, GL_FALSE, 20, ctypes.c_void_p(12))
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self._ibo)
 
         self._texture.bind(GL_TEXTURE0)
         glDrawElements(GL_TRIANGLES, 18, GL_UNSIGNED_INT, ctypes.c_void_p(0))
-        glDisableVertexAttribArray(a["Position"])
-        glDisableVertexAttribArray(a["TexCoord"])
+        glDisableVertexAttribArray(position)
+        glDisableVertexAttribArray(tex_coord)
         glutSwapBuffers()
 
     def on_mouse(self, x, y):
@@ -206,15 +176,13 @@ class GlutWindow(WindowCallback):
                 sys.exit(0)
             glutLeaveMainLoop()
         if key == GLUT_KEY_PAGE_UP:
-            pass
+            self._dir_light_ambient_intensity += 0.05
         if key == GLUT_KEY_PAGE_DOWN:
-            pass
+            self._dir_light_ambient_intensity -= 0.05
         if self._camera:
             self._camera.keyboard(key)
 
     def run(self):
-        if self.camera:
-            self.pipeline.set_camera(self.camera)
         glutMainLoop()
 
 
